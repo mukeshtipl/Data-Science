@@ -10,6 +10,7 @@ import cv2
 import imutils
 from fpdf import FPDF
 from PIL import Image
+#import mahotas
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
@@ -27,7 +28,9 @@ image = imutils.resize(image, height = 500)
 # convert the image to grayscale, blur it, and find edges
 # in the image
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-gray = cv2.GaussianBlur(gray, (5, 5), 0)
+gray = cv2.GaussianBlur(gray, (1, 1), 0)
+#gray = cv2.bilateralFilter(gray, 5,21,21)
+
 #gray = cv2.GaussianBlur(gray, (3, 3), 0)
 edged = cv2.Canny(gray, 75, 200)
 
@@ -46,7 +49,7 @@ cv2.destroyAllWindows()
 
 #  perform a dilation + erosion to
 # close gaps in between object edges
-edged = cv2.dilate(edged, None, iterations=5)
+edged = cv2.dilate(edged, None, iterations=1)
 edged = cv2.erode(edged, None, iterations=1)
 
 cv2.imshow("Edged with dilation and erode", edged)
@@ -81,13 +84,32 @@ cv2.destroyAllWindows()
 # view of the original image
 warped = four_point_transform(orig, screenCnt.reshape(4, 2) * ratio)
 
+
 # convert the warped image to grayscale, then threshold it
 # to give it that 'black and white' paper effect
 
 warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-#T = threshold_local(warped, 11, offset = 10, method = "gaussian")
-T = threshold_local(warped, 11, offset = 2, method = "mean")
+warped = cv2.GaussianBlur(warped, (3, 3), 0)
 
+
+_,warped = cv2.threshold(warped,0,255,cv2.THRESH_BINARY|cv2.THRESH_OTSU)   
+
+cv2.imshow("THRESH_OTSU", warped)
+cv2.waitKey(0)
+#warped=cv2.bilateralFilter(warped, 5,11,11)
+#T = threshold_local(warped, 11, offset = 21, method = "gaussian")
+#T = threshold_local(warped, 11, offset = 2, method = "mean")
+#T = threshold_local(warped, 11, offset = 2, method = "median")
+#(T, thresh) = cv2.threshold(warped, 135, 255, cv2.THRESH_BINARY)
+#warped=cv2.Laplacian(warped, cv2.CV_64F)
+#warped = np.uint8(np.absolute(warped))
+
+
+
+
+#T = cv2.adaptiveThreshold(warped, 255,cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 19, 5)
+
+#T=cv2.adaptiveThreshold(warped, 255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 4)
 
 
 
@@ -103,19 +125,21 @@ cv2.waitKey(0)
 '''
 
 
+#warped=T
+#warped = (warped > T).astype("uint8") * 255
 
-warped = (warped > T).astype("uint8") * 255
+
 #warped = cv2.cvtColor(warped, cv2.COLOR_GRAY2BGR)
 
 # show the original and scanned images
-print(warped.shape)
+#print(warped.shape)
 
 
 
 
 print("STEP 3: Apply perspective transform")
 cv2.imshow("Original", imutils.resize(orig, height = 650))
-cv2.imshow("Scanned", imutils.resize(warped, height = 650))
+#cv2.imshow("Scanned", imutils.resize(warped, height = 650))
 
 
 #need to add check if rotation is required or not
@@ -128,8 +152,14 @@ if width <height:
 else:
     nimage=warped
 
+#nimage=cv2.medianBlur(nimage, 7)
+#(nimage, thresh) = cv2.threshold(nimage, 135, 255, cv2.THRESH_BINARY)
+#nimage = cv2.equalizeHist(nimage)
+    
+_,nimage = cv2.threshold(nimage,0,255,cv2.THRESH_BINARY|cv2.THRESH_OTSU)    
+#nimage = cv2.equalizeHist(nimage)
 
-
+#cv2.imshow("Histogram Equalization", np.hstack([nimage, eq])) #show both images side wise
 '''
 #Adjust contrast and brightness
 alpha=2
@@ -139,7 +169,7 @@ for y in range(nimage.shape[0]):
         nimage[y,x]= np.clip(alpha*nimage[y,x] + beta, 0, 255)
         
 '''
-cv2.imshow("Final" ,imutils.resize(nimage, height = 650))
+cv2.imshow("Final1" ,imutils.resize(nimage, height = 650))
 
 cv2.imwrite("data/scanned_image.jpg",nimage)
 scanned_image=Image.open("data/scanned_image.jpg")
